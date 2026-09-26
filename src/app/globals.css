@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    background-color: #141210;
+    color: #e7e5e4;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    background-image: 
+      radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.05) 1px, transparent 0);
+    background-size: 20px 20px;
+  }
+}
+
+.brutalist-card {
+  background-color: #1c1917;
+  border: 2px solid #44403c;
+  box-shadow: 4px 4px 0px #000000;
+  transition: transform 0.08s ease-out, box-shadow 0.08s ease-out;
+}
+
+.brutalist-card:hover {
+  border-color: #f59e0b;
+}
+
+.brutalist-btn {
+  border: 2px solid #000000;
+  box-shadow: 3px 3px 0px #000000;
+  transition: transform 0.05s cubic-bezier(0, 0, 0.2, 1), box-shadow 0.05s cubic-bezier(0, 0, 0.2, 1);
+}
+
+.brutalist-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #000000;
+}
