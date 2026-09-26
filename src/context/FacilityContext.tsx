@@ -5,6 +5,8 @@ import {
   ChillerUnit,
   ElevatorBank,
   TenantLease,
+  WorkOrder,
+  LeaseAgreement,
   BuildingFacilityKpi,
 } from "@/types/facility";
 
@@ -12,10 +14,19 @@ interface FacilityContextType {
   chillers: ChillerUnit[];
   elevators: ElevatorBank[];
   tenants: TenantLease[];
+  workOrders: WorkOrder[];
+  agreements: LeaseAgreement[];
+  activeAgreementNumber: string;
+  setActiveAgreementNumber: (num: string) => void;
   kpis: BuildingFacilityKpi;
   toggleChiller: (chillerId: string) => void;
   cycleElevator: (elevatorId: string) => void;
   updateEscalationRate: (tenantId: string, newRate: number) => void;
+  updateWorkOrderStatus: (woId: string, newStatus: WorkOrder["status"]) => void;
+  addWorkOrder: (wo: Omit<WorkOrder, "id">) => void;
+  updateAgreement: (agreement: LeaseAgreement) => void;
+  toggleStampDuty: (spsmNumber: string) => void;
+  toggleBmApproval: (spsmNumber: string) => void;
   resetFacilityData: () => void;
 }
 
@@ -160,23 +171,171 @@ const INITIAL_TENANTS: TenantLease[] = [
   },
 ];
 
+const INITIAL_WORK_ORDERS: WorkOrder[] = [
+  {
+    id: "WO-2026-088",
+    equipmentCode: "CH-01",
+    equipmentCategory: "HVAC / CHILLER",
+    priority: "CRITICAL_P1",
+    title: "Condenser Tube Mechanical Descaling & Eddycurent Test",
+    description: "Pembersihan kerak fouling kondensor unit chiller 01 dan pengujian non-destructive eddy current pada 480 tubes tembaga untuk mitigasi pitting korosi.",
+    assignedVendor: "PT Daikin Airconditioning Engineering",
+    status: "IN_PROGRESS",
+    scheduledDate: "2026-09-28",
+    slaHoursRemaining: 18,
+    costEstimateIdr: 45000000,
+  },
+  {
+    id: "WO-2026-089",
+    equipmentCode: "LIFT-A2",
+    equipmentCategory: "VERTICAL TRANSPORT",
+    priority: "HIGH_P2",
+    title: "Overspeed Governor Recalibration & Safety Brake Pad Replacement",
+    description: "Kalibrasi sensor overspeed governor dan penggantian lining kampas rem hidrolik hoist machine elevator A2 pasca 150.000 siklus operasional.",
+    assignedVendor: "PT Schindler Lift Indonesia Divisi High-Rise",
+    status: "OPEN_SCHEDULED",
+    scheduledDate: "2026-09-30",
+    slaHoursRemaining: 44,
+    costEstimateIdr: 32500000,
+  },
+  {
+    id: "WO-2026-090",
+    equipmentCode: "TRAFO-HV-02",
+    equipmentCategory: "ELECTRICAL / GENSET",
+    priority: "MEDIUM_P3",
+    title: "Insulating Oil Dielectric Breakdown Test & Dissolved Gas Analysis (DGA)",
+    description: "Sampling minyak trafo 20 kV / 2.500 kVA sisi gardu distribusi basement B2 guna verifikasi tegangan tembus > 50 kV/2.5mm dan screening gas hidrokarbon.",
+    assignedVendor: "Laboratorium Pengujian PLN Enjiniring",
+    status: "COMPLETED_VERIFIED",
+    scheduledDate: "2026-09-22",
+    slaHoursRemaining: 0,
+    costEstimateIdr: 18000000,
+  },
+  {
+    id: "WO-2026-091",
+    equipmentCode: "STP-BLOWER-01",
+    equipmentCategory: "PLUMBING & STP",
+    priority: "ROUTINE_P4",
+    title: "Aeration Roots Blower Bearing Greasing & Intake Air Filter Cleaning",
+    description: "Perawatan berkala STP aerobik 600 m3/hari: pelumasan bearing suhu tinggi synthetic ISO VG 220 dan pembersihan filter hisap blower kompresi.",
+    assignedVendor: "Internal Facility Mechanical Team MGC",
+    status: "OPEN_SCHEDULED",
+    scheduledDate: "2026-10-02",
+    slaHoursRemaining: 120,
+    costEstimateIdr: 4800000,
+  },
+  {
+    id: "WO-2026-092",
+    equipmentCode: "AHU-L32",
+    equipmentCategory: "HVAC / CHILLER",
+    priority: "HIGH_P2",
+    title: "VAV Damper Actuator Replacement & Static Pressure Tuning",
+    description: "Penggantian modul actuator Belimo 24V pada zona eksekutif lantai 32 dan penyeimbangan static pressure plenum ruang rapat utama.",
+    assignedVendor: "PT Graha Mekanikal Solusindo",
+    status: "WAITING_PARTS",
+    scheduledDate: "2026-10-04",
+    slaHoursRemaining: 72,
+    costEstimateIdr: 14200000,
+  },
+];
+
+const INITIAL_AGREEMENTS: LeaseAgreement[] = [
+  {
+    spsmNumber: "048/SPSM-MGC/III/2026",
+    tenantId: "TNT-01",
+    tenantName: "PT Standard FinTech Global",
+    directorName: "Hendrawan Suryaputra, S.E., MBA",
+    directorTitle: "Direktur Utama",
+    companyAddress: "Gedung Menara Graha Cakrawala Lantai 32 Suite 3201, Jl. Jend. Sudirman Kav. 52-53, Jakarta Selatan",
+    suiteLocation: "Lantai 32, Unit Seluruh Sayap Timur (Suite 3201)",
+    floorLevel: 32,
+    rentableAreaSqm: 1450,
+    baseRentRatePerSqmIdr: 320000,
+    serviceChargeRatePerSqmIdr: 95000,
+    leaseDurationMonths: 60,
+    commencementDate: "01 Januari 2024",
+    expirationDate: "31 Desember 2028",
+    securityDepositMonths: 3,
+    utilityDepositIdr: 150000000,
+    annualEscalationPct: 7.5,
+    stampDutyStatus: "TERPASANG_METERAI_ELEKTRONIK",
+    bmApprovalStatus: "DISAHKAN_DIREKSI_BM",
+    bmApprovedBy: "Ir. Bambang Trihatmojo, M.Eng (General Manager Building)",
+    signDate: "20 Desember 2023",
+  },
+  {
+    spsmNumber: "072/SPSM-MGC/IX/2025",
+    tenantId: "TNT-02",
+    tenantName: "McKinsey Legal & Partners Indonesia",
+    directorName: "Rachmat Budiman, S.H., LL.M.",
+    directorTitle: "Managing Senior Partner",
+    companyAddress: "Gedung Menara Graha Cakrawala Lantai 28 Suite 2801, Jl. Jend. Sudirman Kav. 52-53, Jakarta Selatan",
+    suiteLocation: "Lantai 28, Penthouse Office Suite 2801",
+    floorLevel: 28,
+    rentableAreaSqm: 1100,
+    baseRentRatePerSqmIdr: 310000,
+    serviceChargeRatePerSqmIdr: 95000,
+    leaseDurationMonths: 48,
+    commencementDate: "15 Maret 2023",
+    expirationDate: "14 Maret 2027",
+    securityDepositMonths: 3,
+    utilityDepositIdr: 120000000,
+    annualEscalationPct: 8.0,
+    stampDutyStatus: "TERPASANG_METERAI_ELEKTRONIK",
+    bmApprovalStatus: "DISAHKAN_DIREKSI_BM",
+    bmApprovedBy: "Ir. Bambang Trihatmojo, M.Eng (General Manager Building)",
+    signDate: "01 Maret 2023",
+  },
+  {
+    spsmNumber: "105/SPSM-MGC/VI/2025",
+    tenantId: "TNT-03",
+    tenantName: "CloudScale Software APAC Pte Ltd",
+    directorName: "Alvin Tan Wei Liang",
+    directorTitle: "Regional Managing Director",
+    companyAddress: "Gedung Menara Graha Cakrawala Lantai 22 Suite 2204, Jl. Jend. Sudirman Kav. 52-53, Jakarta Selatan",
+    suiteLocation: "Lantai 22, Server & Tech Wing Suite 2204",
+    floorLevel: 22,
+    rentableAreaSqm: 980,
+    baseRentRatePerSqmIdr: 295000,
+    serviceChargeRatePerSqmIdr: 95000,
+    leaseDurationMonths: 48,
+    commencementDate: "01 Juli 2025",
+    expirationDate: "30 Juni 2029",
+    securityDepositMonths: 3,
+    utilityDepositIdr: 200000000,
+    annualEscalationPct: 6.0,
+    stampDutyStatus: "TERPASANG_METERAI_ELEKTRONIK",
+    bmApprovalStatus: "DRAFT_REVIEW",
+    bmApprovedBy: "Ir. Bambang Trihatmojo, M.Eng (General Manager Building)",
+    signDate: "18 Juni 2025",
+  },
+];
+
 const FacilityContext = createContext<FacilityContextType | undefined>(undefined);
 
 export function FacilityProvider({ children }: { children: React.ReactNode }) {
   const [chillers, setChillers] = useState<ChillerUnit[]>(INITIAL_CHILLERS);
   const [elevators, setElevators] = useState<ElevatorBank[]>(INITIAL_ELEVATORS);
   const [tenants, setTenants] = useState<TenantLease[]>(INITIAL_TENANTS);
+  const [workOrders, setWorkOrders] = useState<WorkOrder[]>(INITIAL_WORK_ORDERS);
+  const [agreements, setAgreements] = useState<LeaseAgreement[]>(INITIAL_AGREEMENTS);
+  const [activeAgreementNumber, setActiveAgreementNumber] = useState<string>("048/SPSM-MGC/III/2026");
 
   useEffect(() => {
     try {
       const savedChillers = localStorage.getItem("propfacility_chillers");
       const savedLifts = localStorage.getItem("propfacility_elevators");
       const savedTenants = localStorage.getItem("propfacility_tenants");
+      const savedWOs = localStorage.getItem("propfacility_workorders");
+      const savedAgreements = localStorage.getItem("propfacility_agreements");
+
       if (savedChillers) setChillers(JSON.parse(savedChillers));
       if (savedLifts) setElevators(JSON.parse(savedLifts));
       if (savedTenants) setTenants(JSON.parse(savedTenants));
+      if (savedWOs) setWorkOrders(JSON.parse(savedWOs));
+      if (savedAgreements) setAgreements(JSON.parse(savedAgreements));
     } catch {
-      // fallback
+      // fallback to initial
     }
   }, []);
 
@@ -185,10 +344,12 @@ export function FacilityProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("propfacility_chillers", JSON.stringify(chillers));
       localStorage.setItem("propfacility_elevators", JSON.stringify(elevators));
       localStorage.setItem("propfacility_tenants", JSON.stringify(tenants));
+      localStorage.setItem("propfacility_workorders", JSON.stringify(workOrders));
+      localStorage.setItem("propfacility_agreements", JSON.stringify(agreements));
     } catch {
       // ignore
     }
-  }, [chillers, elevators, tenants]);
+  }, [chillers, elevators, tenants, workOrders, agreements]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -241,13 +402,62 @@ export function FacilityProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
+  const updateWorkOrderStatus = (woId: string, newStatus: WorkOrder["status"]) => {
+    setWorkOrders((prev) =>
+      prev.map((w) => (w.id === woId ? { ...w, status: newStatus } : w))
+    );
+  };
+
+  const addWorkOrder = (wo: Omit<WorkOrder, "id">) => {
+    const newId = `WO-2026-${String(workOrders.length + 90).padStart(3, "0")}`;
+    const newRecord: WorkOrder = { ...wo, id: newId };
+    setWorkOrders((prev) => [newRecord, ...prev]);
+  };
+
+  const updateAgreement = (updated: LeaseAgreement) => {
+    setAgreements((prev) =>
+      prev.map((a) => (a.spsmNumber === updated.spsmNumber ? updated : a))
+    );
+  };
+
+  const toggleStampDuty = (spsmNumber: string) => {
+    setAgreements((prev) =>
+      prev.map((a) => {
+        if (a.spsmNumber !== spsmNumber) return a;
+        const next =
+          a.stampDutyStatus === "TERPASANG_METERAI_ELEKTRONIK"
+            ? "BELUM_METERAI"
+            : "TERPASANG_METERAI_ELEKTRONIK";
+        return { ...a, stampDutyStatus: next };
+      })
+    );
+  };
+
+  const toggleBmApproval = (spsmNumber: string) => {
+    setAgreements((prev) =>
+      prev.map((a) => {
+        if (a.spsmNumber !== spsmNumber) return a;
+        const next =
+          a.bmApprovalStatus === "DISAHKAN_DIREKSI_BM"
+            ? "DRAFT_REVIEW"
+            : "DISAHKAN_DIREKSI_BM";
+        return { ...a, bmApprovalStatus: next };
+      })
+    );
+  };
+
   const resetFacilityData = () => {
     setChillers(INITIAL_CHILLERS);
     setElevators(INITIAL_ELEVATORS);
     setTenants(INITIAL_TENANTS);
+    setWorkOrders(INITIAL_WORK_ORDERS);
+    setAgreements(INITIAL_AGREEMENTS);
+    setActiveAgreementNumber("048/SPSM-MGC/III/2026");
     localStorage.removeItem("propfacility_chillers");
     localStorage.removeItem("propfacility_elevators");
     localStorage.removeItem("propfacility_tenants");
+    localStorage.removeItem("propfacility_workorders");
+    localStorage.removeItem("propfacility_agreements");
   };
 
   const totalLeased = tenants.reduce((acc, t) => acc + t.rentableAreaSqm, 0);
@@ -269,10 +479,19 @@ export function FacilityProvider({ children }: { children: React.ReactNode }) {
         chillers,
         elevators,
         tenants,
+        workOrders,
+        agreements,
+        activeAgreementNumber,
+        setActiveAgreementNumber,
         kpis,
         toggleChiller,
         cycleElevator,
         updateEscalationRate,
+        updateWorkOrderStatus,
+        addWorkOrder,
+        updateAgreement,
+        toggleStampDuty,
+        toggleBmApproval,
         resetFacilityData,
       }}
     >

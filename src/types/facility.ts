@@ -37,6 +37,44 @@ export interface TenantLease {
   paymentStatus: "CURRENT_PAID" | "PENDING_INVOICE" | "OVERDUE_NOTICE";
 }
 
+export interface WorkOrder {
+  id: string;
+  equipmentCode: string;
+  equipmentCategory: "HVAC / CHILLER" | "VERTICAL TRANSPORT" | "ELECTRICAL / GENSET" | "PLUMBING & STP";
+  priority: "CRITICAL_P1" | "HIGH_P2" | "MEDIUM_P3" | "ROUTINE_P4";
+  title: string;
+  description: string;
+  assignedVendor: string;
+  status: "OPEN_SCHEDULED" | "IN_PROGRESS" | "WAITING_PARTS" | "COMPLETED_VERIFIED";
+  scheduledDate: string;
+  slaHoursRemaining: number;
+  costEstimateIdr: number;
+}
+
+export interface LeaseAgreement {
+  spsmNumber: string;
+  tenantId: string;
+  tenantName: string;
+  directorName: string;
+  directorTitle: string;
+  companyAddress: string;
+  suiteLocation: string;
+  floorLevel: number;
+  rentableAreaSqm: number;
+  baseRentRatePerSqmIdr: number;
+  serviceChargeRatePerSqmIdr: number;
+  leaseDurationMonths: number;
+  commencementDate: string;
+  expirationDate: string;
+  securityDepositMonths: number;
+  utilityDepositIdr: number;
+  annualEscalationPct: number;
+  stampDutyStatus: "TERPASANG_METERAI_ELEKTRONIK" | "BELUM_METERAI";
+  bmApprovalStatus: "DISAHKAN_DIREKSI_BM" | "DRAFT_REVIEW";
+  bmApprovedBy: string;
+  signDate: string;
+}
+
 export interface BuildingFacilityKpi {
   totalOccupancyRatePct: number;
   totalLeasedAreaSqm: number;
